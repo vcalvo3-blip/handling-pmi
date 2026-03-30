@@ -382,8 +382,8 @@ function renderHome() {
   // mode buttons
   const modeGrid = el('div',{class:'mode-grid'});
   const modes = [
-    { m:'handling', icon:'⬡', label:'HANDLING',  sub:'por compañía handling',  accent:'#00f5d4', bg:'rgba(0,245,212,0.1)' },
-    { m:'airline',  icon:'✈', label:'AEROLÍNEA', sub:'por código de aerolínea', accent:'#f72585', bg:'rgba(247,37,133,0.1)' },
+    { m:'handling', icon:'⬡', label:'HANDLING',  sub:'por código de handler',       accent:'#00f5d4', bg:'rgba(0,245,212,0.1)' },
+    { m:'airline',  icon:'✈', label:'AEROLÍNEA', sub:'por código · compañía aérea', accent:'#f72585', bg:'rgba(247,37,133,0.1)' },
   ];
   modes.forEach(({ m, icon, label, sub, accent, bg }) => {
     modeGrid.appendChild(el('button',{class:'mode-btn',style:{
@@ -446,14 +446,9 @@ function renderHandlingPath() {
 
   const hChips = el('div',{class:'chip-grid'});
   Object.keys(data).forEach(code => {
-    hChips.appendChild(chip(code, HC[code].accent, HC[code].glow, selH===code, large=true,
-      ()=>setState({selH: selH===code?null:code, selIcao:null})));
-  });
-  // fix arg order
-  hChips.innerHTML='';
-  Object.keys(data).forEach(code => {
-    hChips.appendChild(chip(code, HC[code].accent, HC[code].glow, selH===code,
-      ()=>setState({selH: selH===code?null:code, selIcao:null}), true));
+    const c = code;
+    hChips.appendChild(chip(c, HC[c].accent, HC[c].glow, selH===c,
+      ()=>setState({selH: selH===c?null:c, selIcao:null}), true));
   });
   wrap.appendChild(hChips);
 
