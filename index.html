@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+  <meta name="apple-mobile-web-app-title" content="Handling PMI"/>
+  <meta name="theme-color" content="#020818"/>
+  <title>Handling Directory · PMI</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #020818;
+      --bg2: #070d26;
+      --grid: rgba(0,245,212,0.03);
+      --teal: #00f5d4;
+      --step: #4cc9f0;
+      --text: #eaf5ff;
+      --sub: #ddeeff;
+      --muted: #5a6f82;
+      --dimmed: #2a3a4a;
+      --chip-bg: rgba(255,255,255,0.03);
+      --chip-border: rgba(255,255,255,0.09);
+    }
+
+    html { height: 100%; }
+
+    body {
+      min-height: 100%;
+      background: linear-gradient(160deg, var(--bg) 0%, var(--bg2) 55%, var(--bg) 100%);
+      font-family: 'Courier New', Courier, monospace;
+      color: var(--text);
+      padding: env(safe-area-inset-top, 28px) env(safe-area-inset-right, 16px) calc(env(safe-area-inset-bottom, 0px) + 40px) env(safe-area-inset-left, 16px);
+      padding-top: max(env(safe-area-inset-top), 28px);
+      position: relative;
+      -webkit-tap-highlight-color: transparent;
+      overflow-x: hidden;
+    }
+
+    /* Grid background */
+    body::before {
+      content: '';
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background-image:
+        linear-gradient(var(--grid) 1px, transparent 1px),
+        linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+      background-size: 44px 44px;
+    }
+    body::after {
+      content: '';
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background: radial-gradient(ellipse 70% 35% at 50% 0%, rgba(0,245,212,0.07) 0%, transparent 70%);
+    }
+
+    #app { position: relative; z-index: 1; max-width: 640px; margin: 0 auto; }
+
+    /* HEADER */
+    .header { text-align: center; margin-bottom: 28px; }
+    .header-sub {
+      font-size: 10px; letter-spacing: 7px; color: var(--teal);
+      opacity: 0.55; margin-bottom: 7px; text-transform: uppercase;
+    }
+    .header h1 {
+      font-size: clamp(18px, 6vw, 32px); font-weight: 900;
+      color: var(--text); letter-spacing: 5px; text-transform: uppercase;
+      text-shadow: 0 0 50px rgba(0,245,212,0.4);
+    }
+    .header-line {
+      width: 100px; height: 1.5px;
+      background: linear-gradient(90deg, transparent, var(--teal), transparent);
+      margin: 12px auto 0;
+    }
+
+    /* STEP LABEL */
+    .step-label {
+      font-size: 10px; letter-spacing: 4px; color: var(--step);
+      text-transform: uppercase; margin-bottom: 14px;
+    }
+
+    /* ROW */
+    .row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+
+    /* BACK BUTTON */
+    .back-btn {
+      background: none; border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 6px; color: #3a5060; font-size: 10px; letter-spacing: 2px;
+      padding: 5px 12px; font-family: inherit; text-transform: uppercase; cursor: pointer;
+    }
+
+    /* CHIP GRID */
+    .chip-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 22px; }
+
+    /* CHIP */
+    .chip {
+      background: var(--chip-bg);
+      border: 1.5px solid var(--chip-border);
+      border-radius: 8px; padding: 8px 14px;
+      color: var(--muted); font-size: 13px; font-weight: 800;
+      letter-spacing: 3px; font-family: inherit;
+      text-transform: uppercase; cursor: pointer;
+      transition: all 0.18s ease; position: relative; overflow: hidden;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+    .chip.large { padding: 11px 22px; font-size: 16px; }
+    .chip:active { transform: scale(0.96); }
+    .chip.selected { font-weight: 900; }
+    .chip .dot {
+      position: absolute; top: 3px; right: 5px;
+      width: 5px; height: 5px; border-radius: 50%;
+      display: none;
+    }
+    .chip.selected .dot { display: block; }
+
+    /* INFO CARD */
+    .info-card {
+      border-radius: 12px; padding: 18px 20px; margin-bottom: 20px;
+      border: 1.5px solid transparent;
+    }
+    .info-card .card-label {
+      font-size: 10px; letter-spacing: 4px; text-transform: uppercase;
+      opacity: 0.6; margin-bottom: 8px;
+    }
+    .info-card .card-body {
+      display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap;
+    }
+    .info-card .card-code {
+      font-size: 30px; font-weight: 900; letter-spacing: 3px;
+    }
+    .info-card .card-iata {
+      font-size: 12px; font-weight: 700; letter-spacing: 3px;
+      border-radius: 5px; padding: 2px 8px; opacity: 0.6;
+      border: 1px solid transparent;
+    }
+    .info-card .card-name {
+      font-size: 16px; font-weight: 700; color: var(--sub); letter-spacing: 1px;
+    }
+    .info-card .card-sub {
+      font-size: 10px; letter-spacing: 2px; opacity: 0.4;
+      margin-left: auto; text-align: right;
+    }
+    .info-card .card-chain {
+      margin-top: 12px; padding: 8px 12px;
+      background: rgba(0,0,0,0.32); border-radius: 6px;
+      font-size: 10px; letter-spacing: 2px; opacity: 0.75;
+    }
+    .info-card .chain-label { margin-right: 8px; }
+    .info-card .chain-val { color: #6a7f94; }
+
+    /* PANEL (home) */
+    .panel {
+      background: rgba(255,255,255,0.02);
+      border-radius: 12px; padding: 14px 16px;
+      display: flex; flex-direction: column; gap: 12px;
+      border: 1px solid transparent;
+    }
+    .panel-header { display: flex; align-items: center; justify-content: space-between; }
+    .panel-title { font-size: 10px; letter-spacing: 5px; text-transform: uppercase; opacity: 0.6; }
+    .panel-btn {
+      background: none; border-radius: 6px; font-size: 9px;
+      letter-spacing: 2px; padding: 3px 10px; font-family: inherit;
+      text-transform: uppercase; cursor: pointer; opacity: 0.7;
+      border: 1px solid transparent;
+    }
+
+    /* HOME grid: stack on mobile */
+    .home-grid { display: flex; flex-direction: column; gap: 14px; }
+    @media (min-width: 600px) {
+      .home-grid { flex-direction: row; }
+      .home-grid .panel { flex: 1; }
+    }
+
+    /* SEARCH */
+    .search-wrap { margin-bottom: 14px; }
+    .search-input {
+      width: 100%; background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.12); border-radius: 8px;
+      color: #c8dff0; font-family: inherit; font-size: 13px;
+      letter-spacing: 2px; padding: 10px 14px; outline: none;
+      -webkit-appearance: none;
+    }
+    .search-input:focus { border-color: rgba(0,245,212,0.5); }
+    .search-input::placeholder { color: #2a3a4a; }
+
+    /* MUTED */
+    .muted { font-size: 10px; color: var(--dimmed); letter-spacing: 3px; text-transform: uppercase; padding: 8px 0; }
+
+    /* FOOTER */
+    .footer { margin-top: 48px; text-align: center; font-size: 10px; letter-spacing: 4px; color: #101e30; text-transform: uppercase; }
+
+    /* Fade animation */
+    .fade-in { animation: fadeSlide 0.28s ease; }
+    @keyframes fadeSlide {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Entry mode selector */
+    .mode-grid { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-bottom: 28px; }
+    .mode-btn {
+      flex: 1; min-width: 140px; max-width: 200px;
+      border-radius: 14px; padding: 20px 16px;
+      display: flex; flex-direction: column; align-items: center; gap: 6px;
+      font-family: inherit; text-transform: uppercase; cursor: pointer;
+      border: 1.5px solid transparent; transition: all 0.2s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .mode-btn:active { transform: scale(0.97); }
+    .mode-icon { font-size: 24px; }
+    .mode-label { font-size: 13px; font-weight: 900; letter-spacing: 3px; }
+    .mode-sub { font-size: 9px; opacity: 0.55; letter-spacing: 2px; }
+  </style>
+</head>
+<body>
+<div id="app">
+  <div class="header">
+    <div class="header-sub">◈ SISTEMA DE CONSULTA · PMI ◈</div>
+    <h1>HANDLING DIRECTORY</h1>
+    <div class="header-line"></div>
+  </div>
+  <div id="root"></div>
+  <div class="footer">PMI · PALMA DE MALLORCA · ABRIL 2026</div>
+</div>
+
+<script>
+// ─── DATA ────────────────────────────────────────────────────────
+const data = {
+  DC4: { name: "GroundForce", airlines: [
+    { iata:"IB", icao:"ANE", name:"Air Nostrum" },
+    { iata:"AF", icao:"AFR", name:"Air France" },
+    { iata:"UX", icao:"AEA", name:"Air Europa" },
+    { iata:"4Y", icao:"OCN", name:"Discover Airlines" },
+    { iata:"SN", icao:"BEL", name:"Brussels Airlines" },
+    { iata:"LO", icao:"LOT", name:"LOT" },
+    { iata:"TP", icao:"TAP", name:"TAP Air Portugal" },
+    { iata:"UA", icao:"UAL", name:"United" },
+    { iata:"LX", icao:"SWR", name:"Swiss" },
+    { iata:"EW", icao:"EWG", name:"Eurowings" },
+  ]},
+  DD8: { name: "South Europe Ground Services", airlines: [
+    { iata:"BA", icao:"BAW", name:"British Airways" },
+    { iata:"BA", icao:"CFE", name:"British Airways CityFlyer" },
+    { iata:"BA", icao:"EFW", name:"Euroflyer" },
+    { iata:"IB", icao:"IBE", name:"Iberia" },
+    { iata:"VY", icao:"VLG", name:"Vueling" },
+    { iata:"IB", icao:"ANE", name:"Air Nostrum" },
+    { iata:"EI", icao:"EIN", name:"Aer Lingus" },
+    { iata:"VK", icao:"LVL", name:"Level" },
+  ]},
+  EJU: { name: "easyJet", airlines: [
+    { iata:"U2", icao:"EJU", name:"easyJet Europe" },
+    { iata:"U2", icao:"EZY", name:"easyJet UK" },
+    { iata:"DS", icao:"EZS", name:"easyJet Switzerland" },
+  ]},
+  HU3: { name: "Menzies", airlines: [
+    { iata:"V7", icao:"VOE", name:"Volotea" },
+    { iata:"GM", icao:"GSW", name:"Chair Airlines" },
+    { iata:"D8", icao:"NSZ", name:"Norwegian Air Sweden" },
+    { iata:"HV", icao:"TRA", name:"Transavia" },
+    { iata:"TO", icao:"TVF", name:"Transavia France" },
+    { iata:"W6", icao:"WZZ", name:"Wizz Air" },
+    { iata:"W4", icao:"WMT", name:"Wizz Air Malta" },
+    { iata:"NT", icao:"IBB", name:"Binter Canarias" },
+  ]},
+  HS1: { name: "Swissport",     airlines: [] },
+  EXS: { name: "Jet2",          airlines: [{ iata:"LS", icao:"EXS", name:"Jet2" }] },
+  RYR: { name: "Azul Handling", airlines: [{ iata:"FR", icao:"RYR", name:"Ryanair" }] },
+  EWG: { name: "Eurowings",     airlines: [{ iata:"EW", icao:"EWG", name:"Eurowings" }] },
+};
+
+const HC = {
+  DC4: { accent:"#00f5d4", glow:"rgba(0,245,212,0.28)" },
+  DD8: { accent:"#f72585", glow:"rgba(247,37,133,0.28)" },
+  EJU: { accent:"#f8961e", glow:"rgba(248,150,30,0.28)" },
+  HU3: { accent:"#4cc9f0", glow:"rgba(76,201,240,0.28)" },
+  HS1: { accent:"#b77fff", glow:"rgba(183,127,255,0.28)" },
+  EXS: { accent:"#b5e48c", glow:"rgba(181,228,140,0.28)" },
+  RYR: { accent:"#ff6b6b", glow:"rgba(255,107,107,0.28)" },
+  EWG: { accent:"#ffd60a", glow:"rgba(255,214,10,0.28)" },
+};
+const MULTI = { accent:"#a0c4ff", glow:"rgba(160,196,255,0.22)" };
+
+// Build ICAO index
+const icaoIndex = {};
+Object.entries(data).forEach(([hCode, hInfo]) => {
+  hInfo.airlines.forEach(a => {
+    if (!icaoIndex[a.icao]) icaoIndex[a.icao] = [];
+    icaoIndex[a.icao].push({ handlingCode:hCode, handlingName:hInfo.name, ...a });
+  });
+});
+const allAirlines = Object.entries(icaoIndex)
+  .map(([icao, entries]) => ({ icao, iata:entries[0].iata, name:entries[0].name, handlings:entries }))
+  .sort((a,b) => a.icao.localeCompare(b.icao));
+
+// ─── STATE ───────────────────────────────────────────────────────
+let state = { mode:null, selH:null, selIcao:null, selHfromA:null, search:"" };
+
+function setState(patch) {
+  state = { ...state, ...patch };
+  render();
+}
+
+// ─── HELPERS ─────────────────────────────────────────────────────
+function airlineColor(a) {
+  return a.handlings.length === 1 ? HC[a.handlings[0].handlingCode] : MULTI;
+}
+
+function el(tag, attrs={}, ...children) {
+  const e = document.createElement(tag);
+  Object.entries(attrs).forEach(([k,v]) => {
+    if (k === 'style' && typeof v === 'object') Object.assign(e.style, v);
+    else if (k.startsWith('on')) e.addEventListener(k.slice(2).toLowerCase(), v);
+    else e.setAttribute(k, v);
+  });
+  children.flat().forEach(c => {
+    if (c == null) return;
+    e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c);
+  });
+  return e;
+}
+
+function chip(label, accent, glow, selected, onClick, large) {
+  const btn = el('button', {
+    class: `chip${large?' large':''}${selected?' selected':''}`,
+    style: {
+      color: selected ? accent : '',
+      background: selected ? `linear-gradient(135deg,${accent}28,${accent}44)` : '',
+      borderColor: selected ? accent : '',
+      boxShadow: selected ? `0 0 18px ${glow},inset 0 0 8px ${glow}` : '',
+    },
+    onclick: onClick,
+  }, label);
+  const dot = el('span', { class:'dot', style:{ background:accent } });
+  btn.appendChild(dot);
+  return btn;
+}
+
+function infoCard(opts) {
+  // opts: { label, code, name, iata, sub, color, chain }
+  const { label, code, name, iata, sub, color, chain } = opts;
+  const card = el('div', { class:'info-card fade-in', style:{
+    background:`linear-gradient(135deg,${color.accent}0b,rgba(7,13,38,0.97))`,
+    borderColor:`${color.accent}50`,
+    boxShadow:`0 0 36px ${color.glow}`,
+  }});
+  card.appendChild(el('div',{class:'card-label',style:{color:color.accent}}, `▸ ${label}`));
+  const body = el('div',{class:'card-body'});
+  body.appendChild(el('span',{class:'card-code',style:{color:color.accent,textShadow:`0 0 18px ${color.glow}`}}, code));
+  if (iata && iata !== code) {
+    body.appendChild(el('span',{class:'card-iata',style:{color:color.accent,borderColor:`${color.accent}40`}}, `IATA: ${iata}`));
+  }
+  body.appendChild(el('span',{class:'card-name'}, name));
+  if (sub) body.appendChild(el('span',{class:'card-sub',style:{color:color.accent}}, sub));
+  card.appendChild(body);
+  if (chain) {
+    const ch = el('div',{class:'card-chain',style:{color:color.accent}});
+    ch.appendChild(el('span',{class:'chain-label'},'◈ CADENA:'));
+    ch.appendChild(el('span',{class:'chain-val'}, chain));
+    card.appendChild(ch);
+  }
+  return card;
+}
+
+function stepLabel(n, text) {
+  return el('div',{class:'step-label'}, `▸ ${n} / ${text}`);
+}
+
+function backBtn() {
+  return el('button',{class:'back-btn',onclick:()=>setState({mode:null,selH:null,selIcao:null,selHfromA:null,search:''})}, '← volver');
+}
+
+// ─── VIEWS ───────────────────────────────────────────────────────
+function renderHome() {
+  const wrap = el('div',{class:'fade-in'});
+
+  wrap.appendChild(el('div',{style:{fontSize:'10px',letterSpacing:'5px',color:'var(--step)',
+    textTransform:'uppercase',textAlign:'center',marginBottom:'18px'}},
+    '▸ elige punto de entrada'));
+
+  // mode buttons
+  const modeGrid = el('div',{class:'mode-grid'});
+  const modes = [
+    { m:'handling', icon:'⬡', label:'HANDLING',  sub:'por compañía handling',  accent:'#00f5d4', bg:'rgba(0,245,212,0.1)' },
+    { m:'airline',  icon:'✈', label:'AEROLÍNEA', sub:'por código de aerolínea', accent:'#f72585', bg:'rgba(247,37,133,0.1)' },
+  ];
+  modes.forEach(({ m, icon, label, sub, accent, bg }) => {
+    modeGrid.appendChild(el('button',{class:'mode-btn',style:{
+      color:accent,background:bg,borderColor:`${accent}66`,
+      boxShadow:`0 0 24px ${bg}`,
+    }, onclick:()=>setState({mode:m})},
+      el('span',{class:'mode-icon'},icon),
+      el('span',{class:'mode-label'},label),
+      el('span',{class:'mode-sub'},sub)
+    ));
+  });
+  wrap.appendChild(modeGrid);
+
+  // dual panels
+  const grid = el('div',{class:'home-grid'});
+
+  // Handling panel
+  const hPanel = el('div',{class:'panel',style:{borderColor:'rgba(0,245,212,0.15)'}});
+  const hHead = el('div',{class:'panel-header'});
+  hHead.appendChild(el('div',{class:'panel-title',style:{color:'#00f5d4'}}, '◈ HANDLING'));
+  hHead.appendChild(el('button',{class:'panel-btn',style:{color:'#00f5d4',borderColor:'rgba(0,245,212,0.3)'},
+    onclick:()=>setState({mode:'handling'})}, 'Explorar →'));
+  hPanel.appendChild(hHead);
+  const hChips = el('div',{class:'chip-grid',style:{marginBottom:'0'}});
+  Object.keys(data).forEach(code => {
+    hChips.appendChild(chip(code, HC[code].accent, HC[code].glow, false,
+      ()=>setState({mode:'handling',selH:code})));
+  });
+  hPanel.appendChild(hChips);
+  grid.appendChild(hPanel);
+
+  // Airline panel
+  const aPanel = el('div',{class:'panel',style:{borderColor:'rgba(247,37,133,0.15)'}});
+  const aHead = el('div',{class:'panel-header'});
+  aHead.appendChild(el('div',{class:'panel-title',style:{color:'#f72585'}}, '◈ AEROLÍNEA (ICAO)'));
+  aHead.appendChild(el('button',{class:'panel-btn',style:{color:'#f72585',borderColor:'rgba(247,37,133,0.3)'},
+    onclick:()=>setState({mode:'airline'})}, 'Explorar →'));
+  aPanel.appendChild(aHead);
+  const aChips = el('div',{class:'chip-grid',style:{marginBottom:'0'}});
+  allAirlines.forEach(a => {
+    const c = airlineColor(a);
+    aChips.appendChild(chip(a.icao, c.accent, c.glow, false,
+      ()=>setState({mode:'airline',selIcao:a.icao})));
+  });
+  aPanel.appendChild(aChips);
+  grid.appendChild(aPanel);
+
+  wrap.appendChild(grid);
+  return wrap;
+}
+
+function renderHandlingPath() {
+  const { selH, selIcao } = state;
+  const wrap = el('div',{class:'fade-in'});
+
+  const row = el('div',{class:'row'});
+  row.appendChild(stepLabel('01','Código de Handling'));
+  row.appendChild(backBtn());
+  wrap.appendChild(row);
+
+  const hChips = el('div',{class:'chip-grid'});
+  Object.keys(data).forEach(code => {
+    hChips.appendChild(chip(code, HC[code].accent, HC[code].glow, selH===code, large=true,
+      ()=>setState({selH: selH===code?null:code, selIcao:null})));
+  });
+  // fix arg order
+  hChips.innerHTML='';
+  Object.keys(data).forEach(code => {
+    hChips.appendChild(chip(code, HC[code].accent, HC[code].glow, selH===code,
+      ()=>setState({selH: selH===code?null:code, selIcao:null}), true));
+  });
+  wrap.appendChild(hChips);
+
+  if (selH) {
+    const sec = el('div',{class:'fade-in'});
+    sec.appendChild(infoCard({
+      label:'02 / Compañía Handling',
+      code:selH, name:data[selH].name,
+      sub:`${data[selH].airlines.length} aerolíneas operadas`,
+      color:HC[selH],
+    }));
+
+    if (data[selH].airlines.length > 0) {
+      sec.appendChild(stepLabel('03','Selecciona aerolínea (ICAO)'));
+      const ac = el('div',{class:'chip-grid'});
+      data[selH].airlines.forEach(a => {
+        ac.appendChild(chip(a.icao, HC[selH].accent, HC[selH].glow, selIcao===a.icao,
+          ()=>setState({selIcao: selIcao===a.icao?null:a.icao})));
+      });
+      sec.appendChild(ac);
+
+      if (selIcao) {
+        const found = data[selH].airlines.find(a=>a.icao===selIcao);
+        if (found) {
+          sec.appendChild(infoCard({
+            label:'04 / Aerolínea',
+            code:selIcao, name:found.name, iata:found.iata,
+            color:HC[selH],
+            chain:`${selH} (${data[selH].name})  →  ${selIcao} / ${found.iata}`,
+          }));
+        }
+      }
+    } else {
+      sec.appendChild(el('div',{class:'muted'},'◈ Sin aerolíneas asignadas'));
+    }
+    wrap.appendChild(sec);
+  }
+  return wrap;
+}
+
+function renderAirlinePath() {
+  const { selIcao, selHfromA, search } = state;
+  const wrap = el('div',{class:'fade-in'});
+
+  const row = el('div',{class:'row'});
+  row.appendChild(stepLabel('01','Código aerolínea (ICAO / IATA / Nombre)'));
+  row.appendChild(backBtn());
+  wrap.appendChild(row);
+
+  // Search
+  const sw = el('div',{class:'search-wrap'});
+  const inp = el('input',{
+    class:'search-input', type:'search',
+    placeholder:'Buscar: EJU · U2 · easyJet...',
+    value:search,
+  });
+  inp.addEventListener('input', e=>{
+    setState({search:e.target.value, selIcao:null, selHfromA:null});
+  });
+  sw.appendChild(inp);
+  wrap.appendChild(sw);
+
+  const q = search.trim().toLowerCase();
+  const filtered = q
+    ? allAirlines.filter(a =>
+        a.icao.toLowerCase().includes(q) ||
+        a.iata.toLowerCase().includes(q) ||
+        a.name.toLowerCase().includes(q))
+    : allAirlines;
+
+  const ac = el('div',{class:'chip-grid'});
+  if (filtered.length===0) {
+    ac.appendChild(el('div',{class:'muted'},'◈ Sin resultados'));
+  } else {
+    filtered.forEach(a => {
+      const c = airlineColor(a);
+      ac.appendChild(chip(a.icao, c.accent, c.glow, selIcao===a.icao,
+        ()=>setState({selIcao: selIcao===a.icao?null:a.icao, selHfromA:null})));
+    });
+  }
+  wrap.appendChild(ac);
+
+  if (selIcao && icaoIndex[selIcao]) {
+    const entries = icaoIndex[selIcao];
+    const airColor = entries.length===1 ? HC[entries[0].handlingCode] : MULTI;
+    const sec = el('div',{class:'fade-in'});
+
+    sec.appendChild(infoCard({
+      label:'02 / Aerolínea',
+      code:selIcao, name:entries[0].name, iata:entries[0].iata,
+      sub:`operada por ${entries.length} handling${entries.length>1?'s':''}`,
+      color:airColor,
+    }));
+
+    if (entries.length>1) {
+      sec.appendChild(stepLabel('03','Selecciona Handling'));
+      const hc = el('div',{class:'chip-grid'});
+      entries.forEach(e => {
+        hc.appendChild(chip(e.handlingCode, HC[e.handlingCode].accent, HC[e.handlingCode].glow,
+          selHfromA===e.handlingCode,
+          ()=>setState({selHfromA: selHfromA===e.handlingCode?null:e.handlingCode}), true));
+      });
+      sec.appendChild(hc);
+    }
+
+    const resolved = selHfromA
+      ? entries.find(e=>e.handlingCode===selHfromA)
+      : (entries.length===1 ? entries[0] : null);
+
+    if (resolved) {
+      sec.appendChild(infoCard({
+        label:`${entries.length>1?'04':'03'} / Compañía Handling`,
+        code:resolved.handlingCode, name:resolved.handlingName,
+        color:HC[resolved.handlingCode],
+        chain:`${selIcao} / ${resolved.iata} (${resolved.name})  →  ${resolved.handlingCode} (${resolved.handlingName})`,
+      }));
+    }
+    wrap.appendChild(sec);
+  }
+
+  return wrap;
+}
+
+// ─── RENDER ──────────────────────────────────────────────────────
+function render() {
+  const root = document.getElementById('root');
+  root.innerHTML='';
+  let view;
+  if (!state.mode)              view = renderHome();
+  else if (state.mode==='handling') view = renderHandlingPath();
+  else                          view = renderAirlinePath();
+  root.appendChild(view);
+  // restore search input focus/value if in airline mode
+  if (state.mode==='airline' && state.search) {
+    const inp = root.querySelector('.search-input');
+    if (inp) { inp.value=state.search; }
+  }
+}
+
+render();
+</script>
+</body>
+</html>
